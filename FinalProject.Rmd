@@ -29,8 +29,10 @@ tweets$text <- gsub('https?://t.co/[A-Za-z0-9]+', '', tweets$text)
 tweets$candidate <- factor(tweets$screen_name, levels = unique(tweets$screen_name), labels = c(1, 2, 3, 4))
 
 tweets <- tweets %>%  select(datetime, text, screen_name, candidate)
+tweets$retweet <- 0
+tweets$retweet[grep('RT @',tweets$text)] <- 1
 
-
+tweets_NoRT <- tweets[grep(0, tweets$retweet),]
 ```
 
 ```{r echo=TRUE}
@@ -41,7 +43,30 @@ flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch"))
 flesch_scores$screen_name <- tweets$screen_name
 
 flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TRUE))
+
+
 ```
+
+
+
+```{r echo=TRUE}
+t_corpus <- corpus(tweets_NoRT$text)
+
+flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch"))
+
+flesch_scores$screen_name <- tweets_NoRT$screen_name
+
+flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TRUE))
+
+```
+
+
+
+
+
+
+
+
 
 
 
