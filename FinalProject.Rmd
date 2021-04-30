@@ -7,15 +7,19 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir ="C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
+#knitr::opts_knit$set(root.dir ="C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
 ```
 
 ```{r echo=FALSE}
 # import libraries
 # rm(list=ls())
 
+library(readr)
+library(stringr)
 library(quanteda)
 library(dplyr)
+library(quanteda.corpora)
+library(tm)
 
 # Change to directory with csv
 # setwd("C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
@@ -31,12 +35,17 @@ tweets$candidate <- factor(tweets$screen_name, levels = unique(tweets$screen_nam
 tweets <- tweets %>%  select(datetime, text, screen_name, candidate)
 tweets$retweet <- 0
 tweets$retweet[grep('RT @',tweets$text)] <- 1
-
+tweets$text <- stemDocument(tweets$text)
+tweets$text = removeWords(tweets$text, stopwords("english"))
+tweets$text = stripWhitespace(tweets$text)
 tweets_NoRT <- tweets[grep(0, tweets$retweet),]
 ```
 
 ```{r echo=TRUE}
+
 t_corpus <- corpus(tweets$text)
+
+#t_corpus <- tolower(t_corpus)
 
 flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch"))
 
@@ -47,8 +56,6 @@ flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TR
 
 ```
 
-
-
 ```{r echo=TRUE}
 t_corpus <- corpus(tweets_NoRT$text)
 
@@ -58,6 +65,56 @@ flesch_scores$screen_name <- tweets_NoRT$screen_name
 
 flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TRUE))
 
+```
+
+```{r}
+Trump_tweet <- ''
+Trump <- tweets_NoRT[tweets_NoRT$candidate==1,]
+for (i in 1:nrow(Trump)){
+  Trump_tweet <- paste(Trump_tweet,Trump[i,2])
+}
+Clinton_tweet <- ''
+Clinton <- tweets_NoRT[tweets_NoRT$candidate==2,]
+for (i in 1:nrow(Clinton)){
+  Clinton_tweet <- paste(Clinton_tweet,Clinton[i,2])
+}
+Cruz_tweet <- ''
+Cruz <- tweets_NoRT[tweets_NoRT$candidate==3,]
+for (i in 1:nrow(Cruz)){
+  Cruz_tweet <- paste(Cruz_tweet,Cruz[i,2])
+}
+Sanders_tweet <- ''
+Sanders <- tweets_NoRT[tweets_NoRT$candidate==4,]
+for (i in 1:nrow(Cruz)){
+  Sanders_tweet <- paste(Sanders_tweet,Sanders[i,2])
+}
+
+candidate_dfm <- dfm(c(Trump_tweet, Clinton_tweet,Cruz_tweet,Sanders_tweet))
+similarity <- textstat_simil(candidate_dfm, margin = "documents", method = "cosine")
+rownames(similarity) <- c('Trump','Clinton','Cruz','Sanders')
+colnames(similarity) <- c('Trump','Clinton','Cruz','Sanders')
+as.matrix(similarity)
+```
+
+```{r}
+rid_dict <- dictionary(file = "RID.cat", format = "wordstat")
+
+#data("data_corpus_sotu")
+
+Bernie_rid_dfm <- dfm(Bernie_corpus, dictionary = rid_dict)
+
+# Look at the categories
+featnames(Bernie_rid_dfm)
+
+# Inspect the results graphically
+plot(Bernie_corpus$candidate, 
+     Bernie_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
+     xlab="Candidate", ylab="Narcissism", type="b", pch=19)
+
+plot(year, 
+     sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
+       sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DEPTH"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.HEIGHT"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.WATER"],
+     xlab="Year", ylab="Icarian-ness", type="b", pch=19)
 ```
 
 
