@@ -112,6 +112,7 @@ words <- sort(rowSums(matrix),decreasing=TRUE)
 df <- data.frame(word = names(words),freq=words)
 wordcloud(words = df$word, freq = df$freq, min.freq = 1,           max.words=70, random.order=FALSE, rot.per=0.1,            colors=brewer.pal(8, "Dark2"))
 
+
 ```
 
 
