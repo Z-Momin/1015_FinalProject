@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ---
 title: "FinalProject"
 author: "Zafir Momin"
@@ -7,23 +8,156 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-#knitr::opts_knit$set(root.dir ="C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
+knitr::opts_knit$set(root.dir ="C:\\Users\\zafir\\Documents\\Text as Data\\Project\\1015_FinalProject")
 ```
 
 ```{r echo=FALSE}
 # import libraries
 # rm(list=ls())
 
-library(readr)
-library(stringr)
 library(quanteda)
 library(dplyr)
-library(quanteda.corpora)
-library(tm)
-
+library(readtext)
+library(quanteda.textmodels)
+library(stringi)
 # Change to directory with csv
 # setwd("C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
 ```
+
+
+```{r echo=TRUE}
+tweets <- read.csv("candidate-tweets.csv", stringsAsFactors=F)
+tweets$text <- gsub('https?://t.co/[A-Za-z0-9]+', '', tweets$text)
+# tweets$candidate <- tweets$screen_name
+tweets$candidate <- factor(tweets$screen_name, levels = unique(tweets$screen_name), labels = c(1, 2, 3, 4))
+
+tweets <- tweets %>%  select(datetime, text, screen_name, candidate)
+tweets$retweet <- 0
+tweets$retweet[grep('RT @',tweets$text)] <- 1
+
+tweets_NoRT <- tweets[grep(0, tweets$retweet),]
+```
+
+```{r echo=TRUE}
+t_corpus <- corpus(tweets$text)
+
+flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch.Kincaid"))
+
+flesch_scores$screen_name <- tweets$screen_name
+
+flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch.Kincaid,na.rm=TRUE))
+```
+
+
+
+```{r echo=TRUE}
+t_corpus <- corpus(tweets_NoRT$text)
+
+flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch.Kincaid"))
+
+flesch_scores$screen_name <- tweets_NoRT$screen_name
+
+flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch.Kincaid,na.rm=TRUE))
+
+```
+
+```{r echo=TRUE}
+filenames <- list.files("Speeches")
+party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
+candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
+
+n_conv_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
+candidate_flesh_df <- data.frame(textstat_readability(n_conv_speeches, "Flesch.Kincaid"))
+candidate_flesh_df <- cbind(candidate_flesh_df, party, candidate, year)
+candidate_flesh_df
+
+# flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
+
+```
+
+```{r echo=TRUE}
+filenames <- list.files("Debates")
+party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
+candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
+
+debate_corpus <- corpus(readtext("Debates/*.txt", encoding="UTF-8"))
+debate_flesh_df <- data.frame(textstat_readability(debate_corpus, "Flesch.Kincaid"))
+debate_flesh_df <- cbind(debate_flesh_df, party, candidate, year)
+debate_flesh_df
+
+# flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
+
+```
+
+```{r echo=TRUE}
+rid_dict <- dictionary(file = "RID.cat", format = "wordstat")
+
+data("data_corpus_sotu")
+
+Bernie_rid_dfm <- dfm(Bernie_corpus, dictionary = rid_dict)
+
+# Look at the categories
+featnames(Bernie_rid_dfm)
+
+# Inspect the results graphically
+plot(Bernie_corpus$candidate, 
+     Bernie_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
+     xlab="Candidate", ylab="Narcissism", type="b", pch=19)
+
+plot(year, 
+     sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
+       sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DEPTH"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.HEIGHT"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.WATER"],
+     xlab="Year", ylab="Icarian-ness", type="b", pch=19)
+
+
+
+```
+WordScores Model
+```{r echo=TRUE}
+filenames <- list.files("Speeches")
+
+# Party name and year are in the filename -- we can use regex to extract these to use as our docvars
+party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
+
+# Make a corpus with docvars from this data
+n_conv_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
+docvars(n_conv_speeches, field = c("party", "candidate") ) <- data.frame(cbind(party, candidate))
+
+# But we're going to use a dataframe
+dem_rep_df <- tibble(text = texts(n_conv_speeches),
+                         class = party,
+                         candidate = candidate)
+
+set.seed(100L)
+ids <- 1:nrow(dem_rep_df)
+ids_test <- sample(ids, 1, replace = FALSE) #we are just excluding one for the test set
+ids_train <- ids[-ids_test]
+train_set <- dem_rep_df[ids_train,]
+test_set <- dem_rep_df[ids_test,]
+
+# create DFMs
+train_dfm <- dfm(train_set$text, remove_punct = TRUE, remove = stopwords("english"))
+test_dfm <- dfm(test_set$text, remove_punct = TRUE, remove = stopwords("english"))
+
+ws_sm <- textmodel_wordscores(train_dfm, 
+                              y = (2 * as.numeric(train_set$class == "Dem")) - 1,
+                              smooth = 1
+)
+
+# Look at strongest features
+dem_features_sm <- sort(ws_sm$wordscores, decreasing = TRUE)  # for labor
+dem_features_sm[1:10]
+
+rep_features_sm <- sort(ws_sm$wordscores, decreasing = FALSE)  # for conservative
+rep_features_sm[1:10]
+```
+
+
+
+############################ Val ##################################
 
 
 ```{r echo=TRUE}
@@ -105,30 +239,11 @@ words <- sort(rowSums(matrix),decreasing=TRUE)
 df <- data.frame(word = names(words),freq=words)
 wordcloud(words = df$word, freq = df$freq, min.freq = 1,           max.words=70, random.order=FALSE, rot.per=0.1,            colors=brewer.pal(8, "Dark2"))
 ```
+
 ```{r}
 dtm <- TermDocumentMatrix(Corpus(VectorSource(c(Cruz_tweet,Trump_tweet))))
 matrix <- as.matrix(dtm) 
 words <- sort(rowSums(matrix),decreasing=TRUE) 
 df <- data.frame(word = names(words),freq=words)
 wordcloud(words = df$word, freq = df$freq, min.freq = 1,           max.words=70, random.order=FALSE, rot.per=0.1,            colors=brewer.pal(8, "Dark2"))
-
-
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
