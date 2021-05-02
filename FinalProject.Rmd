@@ -67,10 +67,11 @@ party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist
 year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
-n_conv_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
-candidate_flesh_df <- data.frame(textstat_readability(n_conv_speeches, "Flesch.Kincaid"))
-candidate_flesh_df <- cbind(candidate_flesh_df, party, candidate, year)
-candidate_flesh_df
+campaign_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
+candidate_flesch_df <- data.frame(textstat_readability(campaign_speeches, "Flesch.Kincaid"))
+candidate_flesch_df <- cbind(candidate_flesch_df, party, candidate, year)
+candidate_flesch_df$text <- campaign_speeches
+candidate_flesch_df
 
 # flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
 
@@ -110,9 +111,6 @@ plot(year,
      sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
        sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DEPTH"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.HEIGHT"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.WATER"],
      xlab="Year", ylab="Icarian-ness", type="b", pch=19)
-
-
-
 ```
 WordScores Model
 ```{r echo=TRUE}
