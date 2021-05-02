@@ -64,11 +64,12 @@ flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch.Kincaid,
 ```{r echo=TRUE}
 filenames <- list.files("Speeches")
 party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
 n_conv_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
 candidate_flesh_df <- data.frame(textstat_readability(n_conv_speeches, "Flesch.Kincaid"))
-candidate_flesh_df <- cbind(candidate_flesh_df, party, candidate)
+candidate_flesh_df <- cbind(candidate_flesh_df, party, candidate, year)
 candidate_flesh_df
 
 # flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
@@ -78,11 +79,12 @@ candidate_flesh_df
 ```{r echo=TRUE}
 filenames <- list.files("Debates")
 party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
 debate_corpus <- corpus(readtext("Debates/*.txt", encoding="UTF-8"))
 debate_flesh_df <- data.frame(textstat_readability(debate_corpus, "Flesch.Kincaid"))
-debate_flesh_df <- cbind(debate_flesh_df, party, candidate)
+debate_flesh_df <- cbind(debate_flesh_df, party, candidate, year)
 debate_flesh_df
 
 # flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
@@ -155,66 +157,7 @@ rep_features_sm[1:10]
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-=======
----
-title: "FinalProject"
-author: "Zafir Momin"
-date: "4/24/2021"
-output: pdf_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-#knitr::opts_knit$set(root.dir ="C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
-```
-
-```{r echo=FALSE}
-# import libraries
-# rm(list=ls())
-
-library(readr)
-library(stringr)
-library(quanteda)
-library(dplyr)
-library(quanteda.corpora)
-library(tm)
-
-# Change to directory with csv
-# setwd("C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
-```
+############################ Val ##################################
 
 
 ```{r echo=TRUE}
@@ -303,22 +246,3 @@ words <- sort(rowSums(matrix),decreasing=TRUE)
 df <- data.frame(word = names(words),freq=words)
 wordcloud(words = df$word, freq = df$freq, min.freq = 1,           max.words=70, random.order=FALSE, rot.per=0.1,            colors=brewer.pal(8, "Dark2"))
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> zafir
