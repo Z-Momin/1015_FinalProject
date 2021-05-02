@@ -64,7 +64,7 @@ flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch.Kincaid,
 ```{r echo=TRUE}
 filenames <- list.files("Speeches")
 party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
-year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
+year <- as.numeric(unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames)))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
 campaign_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
@@ -73,14 +73,14 @@ candidate_flesch_df <- cbind(candidate_flesch_df, party, candidate, year)
 candidate_flesch_df$text <- campaign_speeches
 candidate_flesch_df
 
-# flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
+candidate_flesch_df %>% group_by(candidate) %>% summarise(Avg = mean(Flesch.Kincaid,na.rm=TRUE))
 
 ```
 
 ```{r echo=TRUE}
 filenames <- list.files("Debates")
 party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
-year <- unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames))))
+year <- as.numeric(unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames)))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
 debate_corpus <- corpus(readtext("Debates/*.txt", encoding="UTF-8"))
@@ -88,24 +88,22 @@ debate_flesh_df <- data.frame(textstat_readability(debate_corpus, "Flesch.Kincai
 debate_flesh_df <- cbind(debate_flesh_df, party, candidate, year)
 debate_flesh_df
 
-# flesch_scores %>% group_by(candidate) %>% summarise(Avg = mean(Dickes.Steiwer,na.rm=TRUE))
+debate_flesh_df %>% group_by(candidate) %>% summarise(Avg = mean(Flesch.Kincaid,na.rm=TRUE))
 
 ```
 
 ```{r echo=TRUE}
 rid_dict <- dictionary(file = "RID.cat", format = "wordstat")
 
-data("data_corpus_sotu")
-
-Bernie_rid_dfm <- dfm(Bernie_corpus, dictionary = rid_dict)
+candidates_rid_dfm <- dfm(corpus(candidate_flesch_df, docid_field = "document"), dictionary = rid_dict)
 
 # Look at the categories
-featnames(Bernie_rid_dfm)
+featnames(candidates_rid_dfm)
 
 # Inspect the results graphically
-plot(Bernie_corpus$candidate, 
-     Bernie_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
-     xlab="Candidate", ylab="Narcissism", type="b", pch=19)
+plot(candidate_flesch_df$year, 
+     candidates_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
+     xlab="year", ylab="Narcissism", type="b", pch=19)
 
 plot(year, 
      sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
