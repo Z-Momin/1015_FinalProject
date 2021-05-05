@@ -188,7 +188,6 @@ flesch_scores$screen_name <- tweets$screen_name
 
 flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TRUE))
 
-
 ```
 
 ```{r echo=TRUE}
