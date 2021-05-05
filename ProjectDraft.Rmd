@@ -46,7 +46,7 @@ tweets_NoRT <- tweets[grep(0, tweets$retweet),]
 
 t_corpus <- corpus(tweets$text)
 
-#t_corpus <- tolower(t_corpus)
+t_corpus <- tolower(t_corpus)
 
 flesch_scores <- data.frame(textstat_readability(t_corpus, "Flesch"))
 
@@ -69,6 +69,7 @@ flesch_scores %>% group_by(screen_name) %>% summarise(Avg = mean(Flesch,na.rm=TR
 
 ```
 
+Tweet Cosine Similarity
 ```{r}
 Trump_tweet <- ''
 Trump <- tweets_NoRT[tweets_NoRT$candidate==1,]

@@ -102,8 +102,10 @@ featnames(candidates_rid_dfm)
 
 # Inspect the results graphically
 plot(candidate_flesch_df$year, 
-     candidates_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
+     candidates_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"], xlim = c(2010, 2020),
      xlab="year", ylab="Narcissism", type="b", pch=19)
+
+text(dist ~speed, labels=rownames(candidate_flesch_df$candidate),data=cars, cex=0.9, font=2)
 
 plot(year, 
      sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
@@ -116,11 +118,14 @@ filenames <- list.files("Speeches")
 
 # Party name and year are in the filename -- we can use regex to extract these to use as our docvars
 party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- as.numeric(unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames)))))
 candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
 
 # Make a corpus with docvars from this data
 n_conv_speeches <- corpus(readtext("Speeches/*.txt", encoding="UTF-8"))
-docvars(n_conv_speeches, field = c("party", "candidate") ) <- data.frame(cbind(party, candidate))
+
+#Read in stopwords which are the names of the politicians
+name_Stopwords <- readLines("PronounsFilter.txt", encoding = "UTF-8")
 
 # But we're going to use a dataframe
 dem_rep_df <- tibble(text = texts(n_conv_speeches),
@@ -135,8 +140,10 @@ train_set <- dem_rep_df[ids_train,]
 test_set <- dem_rep_df[ids_test,]
 
 # create DFMs
-train_dfm <- dfm(train_set$text, remove_punct = TRUE, remove = stopwords("english"))
-test_dfm <- dfm(test_set$text, remove_punct = TRUE, remove = stopwords("english"))
+train_dfm <- dfm(train_set$text, tolower = TRUE, remove_punct = TRUE, 
+                 remove = c(stopwords("english"), name_Stopwords))
+test_dfm <- dfm(test_set$text, tolower = TRUE, remove_punct = TRUE, 
+                remove = c(stopwords("english"), name_Stopwords))
 
 ws_sm <- textmodel_wordscores(train_dfm, 
                               y = (2 * as.numeric(train_set$class == "Dem")) - 1,
@@ -144,14 +151,53 @@ ws_sm <- textmodel_wordscores(train_dfm,
 )
 
 # Look at strongest features
-dem_features_sm <- sort(ws_sm$wordscores, decreasing = TRUE)  # for labor
+dem_features_sm <- sort(ws_sm$wordscores, decreasing = TRUE)  # for democrat
 dem_features_sm[1:10]
 
 rep_features_sm <- sort(ws_sm$wordscores, decreasing = FALSE)  # for conservative
 rep_features_sm[1:10]
 ```
 
+```{r echo=TRUE}
+filenames <- list.files("Debates")
 
+# Party name and year are in the filename -- we can use regex to extract these to use as our docvars
+party <- unlist(regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{3}", unlist(filenames))))
+year <- as.numeric(unlist(regmatches(unlist(filenames), gregexpr("[[:digit:]]+", unlist(filenames)))))
+candidate <- unlist(substr( regmatches(unlist(filenames), gregexpr("^[[:alpha:]]{7}", unlist(filenames))), 4, 7))
+
+# Make a corpus with docvars from this data
+debates <- corpus(readtext("Debates/*.txt", encoding="UTF-8"))
+
+dem_rep_df <- tibble(text = texts(debates),
+                         class = party,
+                         candidate = candidate)
+
+
+set.seed(100L)
+ids <- 1:nrow(dem_rep_df)
+ids_test <- sample(ids, 1, replace = FALSE) #we are just excluding one for the test set
+ids_train <- ids[-ids_test]
+train_set <- dem_rep_df[ids_train,]
+test_set <- dem_rep_df[ids_test,]
+
+# create DFMs
+train_dfm <- dfm(train_set$text, tolower = TRUE, remove_punct = TRUE, 
+                 remove = c(stopwords("english"), name_Stopwords))
+test_dfm <- dfm(test_set$text, tolower = TRUE, remove_punct = TRUE, 
+                remove = c(stopwords("english"), name_Stopwords))
+
+ws_sm <- textmodel_wordscores(train_dfm, 
+                              y = (2 * as.numeric(train_set$class == "Dem")) - 1,
+                              smooth = 1)
+
+# Look at strongest features
+dem_features_sm <- sort(ws_sm$wordscores, decreasing = TRUE)  # for democrat
+dem_features_sm[1:10]
+
+rep_features_sm <- sort(ws_sm$wordscores, decreasing = FALSE)  # for conservative
+rep_features_sm[1:10]
+```
 
 ############################ Val ##################################
 
