@@ -20,6 +20,8 @@ library(dplyr)
 library(readtext)
 library(quanteda.textmodels)
 library(stringi)
+library(tm)
+library(wordcloud)
 # Change to directory with csv
 # setwd("C:\\Users\\zafir\\Documents\\Text as Data\\Project\\eui-text-workshop\\datasets")
 ```
@@ -34,6 +36,8 @@ tweets$candidate <- factor(tweets$screen_name, levels = unique(tweets$screen_nam
 tweets <- tweets %>%  select(datetime, text, screen_name, candidate)
 tweets$retweet <- 0
 tweets$retweet[grep('RT @',tweets$text)] <- 1
+
+tweets$datetime = mdy(paste(month(tweets$datetime), day(tweets$datetime), year(tweets$datetime), sep = "-")) # date only
 
 tweets_NoRT <- tweets[grep(0, tweets$retweet),]
 ```
@@ -91,29 +95,7 @@ debate_flesh_df
 
 ```
 
-```{r echo=TRUE}
-rid_dict <- dictionary(file = "RID.cat", format = "wordstat")
 
-data("data_corpus_sotu")
-
-Bernie_rid_dfm <- dfm(Bernie_corpus, dictionary = rid_dict)
-
-# Look at the categories
-featnames(Bernie_rid_dfm)
-
-# Inspect the results graphically
-plot(Bernie_corpus$candidate, 
-     Bernie_rid_dfm[,"PRIMARY.REGR_KNOL.NARCISSISM"],
-     xlab="Candidate", ylab="Narcissism", type="b", pch=19)
-
-plot(year, 
-     sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.FIRE"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.ASCEND"] +sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DESCENT"] +
-       sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.DEPTH"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.HEIGHT"] + sotu_rid_dfm[,"PRIMARY.ICARIAN_IM.WATER"],
-     xlab="Year", ylab="Icarian-ness", type="b", pch=19)
-
-
-
-```
 WordScores Model
 ```{r echo=TRUE}
 filenames <- list.files("Speeches")
@@ -170,9 +152,12 @@ tweets <- tweets %>%  select(datetime, text, screen_name, candidate)
 tweets$retweet <- 0
 tweets$retweet[grep('RT @',tweets$text)] <- 1
 tweets$text <- gsub("amp", "", tweets$text) 
-tweets$text <- stemDocument(tweets$text)
+tweets$text <- stemDocument(tweets$text) 
 tweets$text = removeWords(tweets$text, stopwords("english"))
 tweets$text = stripWhitespace(tweets$text)
+library(lubridate)
+tweets$datetime = mdy(paste(month(tweets$datetime), day(tweets$datetime), year(tweets$datetime), sep = "-")) # date only
+
 tweets_NoRT <- tweets[grep(0, tweets$retweet),]
 ```
 
@@ -246,3 +231,120 @@ words <- sort(rowSums(matrix),decreasing=TRUE)
 df <- data.frame(word = names(words),freq=words)
 wordcloud(words = df$word, freq = df$freq, min.freq = 1,           max.words=70, random.order=FALSE, rot.per=0.1,            colors=brewer.pal(8, "Dark2"))
 ```
+
+# burstiness
+```{r}
+library(bursts)
+library(zoo)
+
+bursty <- function(word, DTM, date) {
+  word.vec <- DTM[, which(colnames(DTM) == word)]
+  if(length(word.vec) == 0) {
+    print(paste(word, " does not exist in this corpus."))
+    return()
+  } 
+  else {
+    word.times <- c(0,which(as.vector(word.vec)>0))
+    
+    kl <- kleinberg(word.times, gamma = 0.5)
+    kl$start <- date[kl$start+1]
+    kl$end <- date[kl$end]
+    max_level <- max(kl$level)
+    
+    plot(c(kl$start[1], kl$end[1]), c(1,max_level),
+         type = "n", ylab = "Level", bty = "n",
+         xlim = c(min(date),max(date)),ylim = c(1, max_level),xlab = '',
+         yaxt = "n")
+    axis(2, at = 1:max_level)
+    axis(1, date, as.Date(date), cex.axis = 1,line = 1.28)    
+    
+    for (i in 1:nrow(kl)) {
+      if (kl$start[i] != kl$end[i]) {
+        arrows(kl$start[i], kl$level[i], kl$end[i], kl$level[i], code = 3, angle = 90,
+               length = 0.05)
+      } 
+      else {
+        points(kl$start[i], kl$level[i])
+      }
+    }
+    
+    print(kl)
+  }
+  #note deviation from standard defaults bec don't have that much data
+}
+
+library(lubridate)
+Trump_corpus <- corpus(Trump,text_field = 'text')
+Clinton_corpus <- corpus(Clinton,text_field = 'text')
+Cruz_corpus <- corpus(Cruz,text_field = 'text')
+Sanders_corpus <- corpus(Sanders,text_field = 'text')
+
+news_dfm <- dfm(news_data)
+
+Trump_dfm <- dfm(Trump_corpus)
+Clinton_dfm <- dfm(Clinton_corpus)
+Cruz_dfm <- dfm(Cruz_corpus)
+Sanders_dfm <- dfm(Sanders_corpus)
+
+bursty("immigration", Trump_dfm, docvars(Trump_corpus)$date)
+bursty("immigrant", Trump_dfm, docvars(Trump_corpus)$date)
+bursty("obama", Trump_dfm, docvars(Trump_corpus)$date)
+bursty("immigr", Clinton_dfm, docvars(Clinton_corpus)$date)
+```
+
+```{r}
+bursty <- function(word, DTM, date) {
+  word.vec <- DTM[, which(colnames(DTM) == word)]
+  if(length(word.vec) == 0) {
+    print(paste(word, " does not exist in this corpus."))
+    return()
+  } 
+  else {
+    word.times <- c(0,which(as.vector(word.vec)>0))
+    
+    kl <- kleinberg(word.times, gamma = 0.5)
+    kl$start <- date[kl$start+1]
+    kl$end <- date[kl$end]
+    max_level <- max(kl$level)
+    
+    plot(c(kl$start[1], kl$end[1]), c(1,max_level),
+         type = "n", xlab = "Time", ylab = "Level", bty = "n",
+         xlim = c(min(date), max(date)), ylim = c(1, max_level),
+         yaxt = "n")
+    axis(2, at = 1:max_level)
+    
+    for (i in 1:nrow(kl)) {
+      if (kl$start[i] != kl$end[i]) {
+        arrows(kl$start[i], kl$level[i], kl$end[i], kl$level[i], code = 3, angle = 90,
+               length = 0.05)
+      } 
+      else {
+        points(kl$start[i], kl$level[i])
+      }
+    }
+    
+    print(kl)
+  }
+  #note deviation from standard defaults bec don't have that much data
+}
+
+bursty("immigr", Clinton_dfm, year(docvars(Clinton_corpus)$date))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
